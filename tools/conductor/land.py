@@ -45,14 +45,22 @@ class TickResult:
 
 
 def record_land(lane, adv, intent_args, prefix, base_trunk, spec_tip, spec_tree, batch_id,
-                hermetic_digest=None, lane_id="main", _after_build=None):
+                hermetic_digest=None, lane_id="main", _after_build=None, guard=None):
     """Crash-safe advance+record. Returns (ok, reason). Appends ev_intent_prepared before the
     advance; on a confirmed advance appends ev_batch_landed (idempotent). A killed runner leaves
-    an intent the reconciler completes; a lost lease leaves nothing landed."""
+    an intent the reconciler completes; a lost lease leaves nothing landed.
+
+    `guard()` is the at-land gate (issue #4) — the LAST check before the lease, e.g. re-confirming
+    every `Closes #N` is still OPEN. If it returns `(False, reason)` the land aborts (no advance) and
+    the reason is prefixed `guard:` so the caller can hold rather than retry."""
     lane.append(ev_intent_prepared(lane_id, batch_id, prefix, base_trunk, spec_tip, spec_tree,
                                    hermetic_digest))
     if _after_build is not None:
         _after_build()
+    if guard is not None:
+        ok, reason = guard()
+        if not ok:
+            return False, f"guard:{reason}"
     ok, _ = adv.advance(spec_tip, expected_old=base_trunk)
     if not ok:
         return False, "trunk advanced under us"

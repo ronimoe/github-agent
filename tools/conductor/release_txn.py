@@ -88,9 +88,12 @@ class IssueSim:
         return "commented"
 
 
-def run_release(repo, rlog, plan, token, registry, issues, trunk_to, verified_issues=()) -> str:
+def run_release(repo, rlog, plan, token, registry, issues, trunk_to, verified_issues=(),
+                releases=None) -> str:
     """Run (or recover) the release for `plan`. Idempotent and exactly-once across concurrency +
-    crash. `verified_issues` must already be confirmed closing-linked to a contributing PR."""
+    crash. `verified_issues` must already be confirmed closing-linked to a contributing PR.
+    `releases` (optional) is a GitHub Release port (`create_if_absent`) — gated on winning, same as
+    the registry publish, so the GitHub Release is created exactly once (issue #5)."""
     ph = plan.fragment_set_hash
     st = reduce_release(rlog.read()[0])
     if ph in st["done"]:
@@ -115,6 +118,9 @@ def run_release(repo, rlog, plan, token, registry, issues, trunk_to, verified_is
         st = reduce_release(rlog.read()[0])
         if key not in st["released"]:
             registry.publish_if_absent(pkg, version)          # create-if-absent
+            if releases is not None:                          # idempotent GitHub Release on the tag
+                releases.create_if_absent(f"{pkg}-{version}", f"{pkg} {version}",
+                                          getattr(plan, "changelog", ""))
             rlog.append(ev_pkg_released(pkg, version))
         for issue in verified_issues:
             if (pkg, version, issue) in st["closed"]:

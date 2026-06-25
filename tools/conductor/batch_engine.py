@@ -24,7 +24,7 @@ from trunk import TrunkAdvancer
 class BatchEngine:
     def __init__(self, repo: WorkRepo, lane, flaky, branch: str = "main",
                  budget: int = 8, n_barrier: int = 10, reps: int = 3,
-                 lane_id: str = "main", prebuild_tree=None):
+                 lane_id: str = "main", prebuild_tree=None, at_land_guard=None):
         self.repo = repo
         self.lane = lane
         self.flaky = flaky
@@ -34,6 +34,7 @@ class BatchEngine:
         self.reps = reps
         self.lane_id = lane_id
         self.prebuild_tree = prebuild_tree     # (tree)->(tree', digest) — global-lane lockfile regen
+        self.at_land_guard = at_land_guard     # (members)->(ok, reason) — last check before advance (#4)
 
     # --- intake --------------------------------------------------------------
 
@@ -104,10 +105,15 @@ class BatchEngine:
         dec = decide(classified, fstate)
 
         if dec.kind == "green":
+            guard = (lambda: self.at_land_guard(members)) if self.at_land_guard else None
             ok, reason = record_land(self.lane, self.adv, None, [r.pr for r in members], trunk,
                                      spec_tip, spec_tree, batch_id, lane_id=self.lane_id,
-                                     _after_build=_after_build)
+                                     _after_build=_after_build, guard=guard)
             if not ok:
+                if reason.startswith("guard:"):          # at-land gate failed -> hold (#4), don't retry
+                    self.lane.append(ev_held("batch", reason, spec_tree, [r.pr for r in members]))
+                    self._tune(max(1, m // 2))
+                    return TickResult("held", None, reason)
                 self.lane.append(ev_batch_retried(batch_id, reason))
                 return TickResult("retry", None, reason)
             self._tune(m + 1)
