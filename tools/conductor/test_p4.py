@@ -104,7 +104,9 @@ class VerifierTests(unittest.TestCase):
         self.assertEqual(decide(classify(merged), FlakyState()).kind, "red")
 
     def test_clean_patch_passes(self):
-        base, tree = self._tree({"src/api/x.py": "def foo():\n return 1\n", "src/api/y.py": "z = 1\n"})
+        # body-only change to an exported fn + a private addition => PATCH (the deeper differ now
+        # correctly scores an added *public* module var as MINOR, so keep this addition private).
+        base, tree = self._tree({"src/api/x.py": "def foo():\n return 1\n", "src/api/y.py": "_z = 1\n"})
         oracle = DeterministicFakeOracle(open_issues={12}, links={1: {12}})
         v = verify(self.w, base, tree, tree, CS.format(lvl="patch", iss="12"),
                    {"change_id": "I1", "agent": "a1", "closes": 12}, ["src/api/*"], oracle, 1)
