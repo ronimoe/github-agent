@@ -17,8 +17,9 @@ Verified-critical fixes baked in:
 from __future__ import annotations
 
 
-def ev_release_started(plan_hash, token, consumed):
-    return {"type": "release_started", "plan_hash": plan_hash, "token": token, "consumed": list(consumed)}
+def ev_release_started(plan_hash, token, consumed, change_ids=None):
+    return {"type": "release_started", "plan_hash": plan_hash, "token": token,
+            "consumed": list(consumed), "change_ids": dict(change_ids or {})}  # ulid -> change_id (#9)
 
 
 def ev_pkg_tagged(pkg, version, winner):
@@ -39,11 +40,16 @@ def ev_release_done(plan_hash):
 
 def reduce_release(events) -> dict:
     consumed_by_plan, tagged, released, closed, done, started = {}, {}, set(), set(), set(), set()
+    change_ids_by_plan, change_id_index = {}, {}     # (#9) the authoritative ledger join key
     for e in events:
         t = e.get("type")
         if t == "release_started":
             started.add(e["token"])
             consumed_by_plan[e["plan_hash"]] = e.get("consumed", [])
+            cids = e.get("change_ids", {})           # ulid -> change_id
+            change_ids_by_plan[e["plan_hash"]] = cids
+            for ulid, cid in cids.items():
+                change_id_index[cid] = {"ulid": ulid, "plan_hash": e["plan_hash"]}
         elif t == "pkg_tagged":
             tagged[(e["pkg"], e["version"])] = e["winner"]
         elif t == "pkg_released":
@@ -53,7 +59,8 @@ def reduce_release(events) -> dict:
         elif t == "release_done":
             done.add(e["plan_hash"])
     return {"consumed_by_plan": consumed_by_plan, "tagged": tagged, "released": released,
-            "closed": closed, "done": done, "started": started}
+            "closed": closed, "done": done, "started": started,
+            "change_ids_by_plan": change_ids_by_plan, "change_id_index": change_id_index}
 
 
 class RegistrySim:
@@ -99,7 +106,7 @@ def run_release(repo, rlog, plan, token, registry, issues, trunk_to, verified_is
     if ph in st["done"]:
         return "already-done"
     if token not in st["started"]:
-        rlog.append(ev_release_started(ph, token, plan.consumed))
+        rlog.append(ev_release_started(ph, token, plan.consumed, getattr(plan, "change_ids", {})))
 
     for pkg, version in sorted(plan.versions.items()):
         key = (pkg, version)

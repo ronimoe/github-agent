@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 
 from apidiff import LEVELS
 
-ALLOWED = {"bumps", "bump", "component", "issues", "issue", "agent"}
+ALLOWED = {"bumps", "bump", "component", "issues", "issue", "agent", "change_id"}
 _ULID32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 
@@ -38,6 +38,7 @@ class Fragment:
     issues: list = field(default_factory=list)
     agent: str | None = None
     body: str = ""
+    change_id: str | None = None                # the authoritative join key to the landed commit (#9)
 
 
 def _parse_issues(val: str) -> list:
@@ -68,7 +69,7 @@ def parse_fragment(text: str) -> Fragment:
     if not body:
         raise ChangesetError("empty changelog body")
 
-    bumps, single_bump, component, issues, agent = {}, None, None, [], None
+    bumps, single_bump, component, issues, agent, change_id = {}, None, None, [], None, None
     i = 0
     while i < len(front):
         line = front[i]
@@ -109,13 +110,15 @@ def parse_fragment(text: str) -> Fragment:
             issues = _parse_issues(val)
         elif key == "agent":
             agent = val
+        elif key == "change_id":
+            change_id = val
         i += 1
 
     if not bumps:
         if single_bump is None:
             raise ChangesetError("no bump declared")
         bumps = {component or "_default": single_bump}
-    return Fragment(bumps=bumps, issues=issues, agent=agent, body=body)
+    return Fragment(bumps=bumps, issues=issues, agent=agent, body=body, change_id=change_id)
 
 
 def gen_ulid(ts_ms: int, rand: bytes) -> str:

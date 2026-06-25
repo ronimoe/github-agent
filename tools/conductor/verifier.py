@@ -89,9 +89,10 @@ def verify(repo, base, merged_tree, head_sha, fragment_text, trailers, footprint
     else:
         checks["V1"] = PASS
 
-    # V3 issue verified-linked + open (precheck)
-    closes = trailers.get("closes")
-    issues = [int(closes)] if closes else (frag.issues if frag else [])
+    # V3 issue verified-linked + open (precheck) — closes may be a scalar or a list (#9)
+    c = trailers.get("closes")
+    closes = c if isinstance(c, (list, tuple)) else ([c] if c else [])
+    issues = [int(x) for x in closes] or (frag.issues if frag else [])
     v3 = PASS
     for n in issues:
         if n not in oracle.closing_links(pr):

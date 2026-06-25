@@ -29,8 +29,10 @@ def build_plan(fragments_with_ulids, current_versions, graph=None, single_versio
         cur = current_versions.get(comp, "0.0.0")
         versions[comp] = semver.bump_version(cur, lvl, zero_major) if lvl > NONE else cur
 
+    change_ids = {u: f.change_id for u, f in active if getattr(f, "change_id", None)}
     return ReleasePlan(versions=versions, bumps=raw, changelog=render_changelog(frags),
-                       consumed=sorted(set(ulids)), fragment_set_hash=fragment_set_hash(ulids))
+                       consumed=sorted(set(ulids)), fragment_set_hash=fragment_set_hash(ulids),
+                       change_ids=change_ids)
 
 
 def in_flight_consumed(release_log) -> set:

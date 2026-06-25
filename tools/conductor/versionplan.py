@@ -89,3 +89,4 @@ class ReleasePlan:
     changelog: str = ""
     consumed: list = field(default_factory=list)   # fragment ulids (deduped, sorted)
     fragment_set_hash: str = ""
+    change_ids: dict = field(default_factory=dict)  # ulid -> change_id (the ledger join key, #9)

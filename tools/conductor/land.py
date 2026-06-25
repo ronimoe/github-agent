@@ -19,18 +19,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from reducer import ev_intent_prepared, ev_batch_landed
+from trailers import TRAILER_LABELS, format_closes
 
 
 def land_message(rec, lane_id=None, batch_id=None) -> str:
     tr = rec.trailers
     lines = [f"Land #{rec.pr}: {tr.get('subject', 'change')}", ""]
-    if tr.get("closes"):
-        lines.append(f"Closes #{tr['closes']}")
-    for key, label in (("change_id", "Change-Id"), ("agent", "Agent-Id"), ("model", "Model")):
+    cl = tr.get("closes")
+    closes = cl if isinstance(cl, (list, tuple)) else ([cl] if cl else [])
+    lines += format_closes(closes)                          # ONE Closes line per issue (#9 fix)
+    for key in ("change_id", "agent", "model"):
         if tr.get(key):
-            lines.append(f"{label}: {tr[key]}")
+            lines.append(f"{TRAILER_LABELS[key]}: {tr[key]}")
     if lane_id is not None or batch_id is not None:
-        lines.append(f"Conductor-Batch: {lane_id or 'main'}/{batch_id or '0'}")
+        lines.append(f"{TRAILER_LABELS['batch']}: {lane_id or 'main'}/{batch_id or '0'}")
     return "\n".join(lines)
 
 

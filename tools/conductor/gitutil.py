@@ -191,6 +191,17 @@ class WorkRepo:
         """The tree OID of a commit — the content key for a spec (P2)."""
         return _git(["rev-parse", f"{commit}^{{tree}}"], self.dir).stdout.strip()
 
+    def commit_message(self, sha: str) -> str:
+        """Full commit message (subject + body) — the trailer source for the ledger (#9)."""
+        return _git(["log", "-1", "--format=%B", sha], self.dir).stdout
+
+    def first_parent_list(self, base: str, ref: str) -> list[str]:
+        """Landed commits along the FIRST parent, oldest first — the canonical landed order the
+        provenance projection walks (#9). Empty `base` => all of `ref` (including the root)."""
+        rng = f"{base}..{ref}" if base else ref
+        out = _git(["rev-list", "--first-parent", "--reverse", rng], self.dir).stdout
+        return [s for s in out.split() if s]
+
     def commit_onto(self, tree: str, parent: str, message: str,
                     author: dict | None = None, date: str = DATE) -> str:
         """Create a SINGLE-parent commit with `tree` on top of `parent` — a linear
