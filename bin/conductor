@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# conductor — single entry point for the Conductor tools, exposed on PATH by the Claude Code
+# plugin (bin/ is auto-added). Resolves its own location so it works from the plugin cache.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="${CONDUCTOR_PYTHON:-python3}"
+
+usage() {
+  cat <<EOF
+conductor — GitHub-native control plane for AI agent fleets
+
+usage:
+  conductor measure-f [PATH]            measure shared-file contention (f) on a repo
+  conductor hermetic <args...>          run the hermetic lockfile gate (record|gate|probe|verify|plan)
+  conductor setup <owner/repo> [app-id] bootstrap governance (ruleset + required check) on a GitHub repo
+  conductor test                        run the full engine + hermetic test suite
+  conductor help                        show this help
+EOF
+}
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+  measure-f) exec "$PY" "$ROOT/tools/measure-f/measure_f.py" "${@:-.}" ;;
+  hermetic)  exec "$PY" "$ROOT/tools/hermetic/hermetic.py" "$@" ;;
+  setup)     exec "$ROOT/tools/conductor/bootstrap/governance-setup.sh" "$@" ;;
+  test)
+    "$PY" "$ROOT/tools/hermetic/test_hermetic.py"
+    ( cd "$ROOT/tools/conductor" && exec "$PY" -m unittest \
+        test_conductor test_engine test_p2 test_p3 test_p4 test_p5 )
+    ;;
+  help|-h|--help) usage ;;
+  *) echo "conductor: unknown command '$cmd'" >&2; usage; exit 1 ;;
+esac

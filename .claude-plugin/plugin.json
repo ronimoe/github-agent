@@ -1,0 +1,10 @@
+{
+  "name": "conductor",
+  "displayName": "Conductor",
+  "description": "GitHub-native integration & governance for fleets of AI coding agents: a speculative merge engine, flaky-quarantine, mechanical correctness verifier, and exactly-once releases. Adds a `conductor` CLI plus slash commands and a skill.",
+  "author": { "name": "Conductor contributors" },
+  "homepage": "https://github.com/ronimoe/github-agent",
+  "repository": "https://github.com/ronimoe/github-agent",
+  "license": "MIT",
+  "keywords": ["git", "ci", "merge-queue", "ai-agents", "governance", "release", "monorepo"]
+}

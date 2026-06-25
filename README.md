@@ -97,7 +97,39 @@ cd tools/conductor && python3 -m unittest test_conductor test_engine \
     test_p2 test_p3 test_p4 test_p5                                      # 66 tests
 ```
 
-## Quickstart
+## Use in Claude Code
+
+Conductor ships as a **Claude Code plugin** — this repo *is* the marketplace. Installing it gives
+you the `conductor` CLI on `PATH`, three slash commands, and a skill that teaches Claude the
+workflow and the engine API.
+
+```text
+# inside Claude Code
+/plugin marketplace add ronimoe/github-agent
+/plugin install conductor@conductor
+```
+
+| Slash command | What it does |
+|---|---|
+| `/conductor:measure-f [path]` | measure shared-file contention `f` → realistic parallelism ceiling |
+| `/conductor:hermetic-gate` | run the hermetic lockfile gate (fails closed on drift) |
+| `/conductor:setup-governance <owner>/<repo>` | bootstrap the trunk ruleset + required check (idempotent) |
+
+To enable it for a whole team, commit this to the repo's `.claude/settings.json`:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "conductor": { "source": { "source": "github", "repo": "ronimoe/github-agent" } }
+  },
+  "enabledPlugins": { "conductor@conductor": true }
+}
+```
+
+The **Conductor skill** gives Claude the engine concepts plus the `BatchEngine` library API (below),
+so it can both run the tools and drive integration itself.
+
+## Quickstart (standalone CLI / library)
 
 **1. Measure your repo's parallelism ceiling first** (the go/no-go number):
 

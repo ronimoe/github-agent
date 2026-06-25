@@ -1,0 +1,16 @@
+{
+  "name": "conductor",
+  "description": "Conductor — a GitHub-native control plane for fleets of AI coding agents.",
+  "owner": { "name": "ronimoe", "url": "https://github.com/ronimoe" },
+  "plugins": [
+    {
+      "name": "conductor",
+      "displayName": "Conductor",
+      "source": ".",
+      "description": "Speculative merge engine + flaky-quarantine + correctness verifier + exactly-once releases for unattended AI agent fleets. Provides the `conductor` CLI, slash commands (measure-f, hermetic-gate, setup-governance), and a skill.",
+      "category": "automation",
+      "license": "MIT",
+      "keywords": ["git", "ci", "ai-agents", "governance", "release"]
+    }
+  ]
+}
