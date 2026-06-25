@@ -1,0 +1,42 @@
+# conductor-ci — per-PR hermetic CI that produces the `conductor-spec` verdict the engine reads.
+# Runs the repo's test command N times under the frozen test runtime (issue #6) and publishes a
+# check-run whose output is the per-rep report consumed by the verdict seam (issue #1).
+#
+# Hardening for production (issue #6): pin `runs-on` to a digest-pinned self-hosted/container
+# image and DENY network during the test step (job `container` with `--network none`, or a
+# firewall step). ubuntu-latest is used here because it ships git/gh/jq/python3; it is NOT
+# network-isolated, so treat this as a template, not the final hermetic runner.
+name: conductor-ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  spec:
+    if: contains(github.event.pull_request.labels.*.name, 'conductor:ready')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run hermetic test reps
+        run: python3 tools/conductor/ci_runner.py --reps 3 --out conductor-spec.json
+
+      # Injection-safe: the SHA comes from env (not run-line interpolation) and the report is
+      # passed via jq --rawfile, never $(cat ...).
+      - name: Publish conductor-spec check-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          jq -n --arg sha "$HEAD_SHA" --rawfile text conductor-spec.json \
+            '{name:"conductor-spec", head_sha:$sha, status:"completed", conclusion:"neutral",
+              output:{title:"Conductor spec verdict",
+                      summary:"Per-rep hermetic test results for the engine verdict seam.",
+                      text:$text}}' \
+          | gh api -X POST "/repos/$GH_REPO/check-runs" --input -

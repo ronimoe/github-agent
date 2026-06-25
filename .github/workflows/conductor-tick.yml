@@ -1,0 +1,45 @@
+# conductor-tick — the privileged engine tick (issue #2). Runs under the bot App token (issue #3)
+# as the sole trunk writer: routes ready PRs into lanes, reads each PR's conductor-spec verdict,
+# and advances trunk via force-with-lease. The reconciler completes any crashed land exactly-once.
+#
+# Event-driven (a conductor-spec check completing) + a cron backstop + manual dispatch. The
+# concurrency group coalesces ticks; the git FF-lease is the real serialization point, so a
+# cancelled/coalesced tick loses no work.
+name: conductor-tick
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+  check_run:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: conductor-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mint bot App token
+        id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.CONDUCTOR_APP_ID }}
+          private-key: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
+
+      - name: Run engine tick
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 tools/conductor/tick_runner.py

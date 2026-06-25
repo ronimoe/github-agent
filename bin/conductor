@@ -27,7 +27,7 @@ case "$cmd" in
   test)
     "$PY" "$ROOT/tools/hermetic/test_hermetic.py"
     ( cd "$ROOT/tools/conductor" && exec "$PY" -m unittest \
-        test_conductor test_engine test_p2 test_p3 test_p4 test_p5 )
+        test_conductor test_engine test_p2 test_p3 test_p4 test_p5 test_integration )
     ;;
   help|-h|--help) usage ;;
   *) echo "conductor: unknown command '$cmd'" >&2; usage; exit 1 ;;

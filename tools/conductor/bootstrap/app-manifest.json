@@ -1,0 +1,15 @@
+{
+  "_comment": "GitHub App manifest for the Conductor bot (issue #3) — the sole privileged trunk writer. Create it via Settings > Developer settings > GitHub Apps > New (or the create-from-manifest flow), install it on the target repo, then set the repo Actions variable CONDUCTOR_APP_ID and the secret CONDUCTOR_APP_PRIVATE_KEY. Least-privilege: only what the engine needs to land, check, and release.",
+  "name": "conductor-bot",
+  "url": "https://github.com/ronimoe/github-agent",
+  "public": false,
+  "hook_attributes": { "active": false },
+  "default_permissions": {
+    "contents": "write",
+    "pull_requests": "write",
+    "checks": "write",
+    "statuses": "write",
+    "issues": "write"
+  },
+  "default_events": ["pull_request", "check_run", "push", "workflow_run"]
+}
