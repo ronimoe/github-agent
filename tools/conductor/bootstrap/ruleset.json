@@ -1,0 +1,44 @@
+{
+  "_comment": "Conductor trunk protection ruleset (GitHub Repository Ruleset API). The non-bypassable safety backstop for ADR-0003/0004: even if a client misbehaves, a lost lease race can never write a non-linear or unverified trunk. Apply with: gh api -X POST repos/{owner}/{repo}/rulesets --input ruleset.json. Set bypass_actors[].actor_id to the Conductor bot App's installation id.",
+  "name": "conductor-trunk",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/main"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": true,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          { "context": "conductor-landed" }
+        ]
+      }
+    }
+  ],
+  "bypass_actors": [
+    {
+      "_comment": "The Conductor bot App is the sole privileged trunk writer. Replace actor_id with the App's installation id; actor_type Integration; bypass only via the merge pipeline.",
+      "actor_id": 0,
+      "actor_type": "Integration",
+      "bypass_mode": "always"
+    }
+  ]
+}

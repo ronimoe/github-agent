@@ -1,0 +1,51 @@
+# Template GitHub Actions workflow: hermetic resolution drift probe.
+#
+# Conductor runs this on every change to the ResolutionEpoch (and on a schedule)
+# to detect resolver/registry nondeterminism BEFORE it can corrupt trunk. It
+# re-resolves a known prefix twice under the frozen epoch and diffs the lockfile.
+#
+# Copy to .github/workflows/ in the target repo and pin the toolchain setup to the
+# versions recorded in epoch.json. Exit code 1 (a digest mismatch) fails the build.
+
+name: hermetic-probe
+
+on:
+  push:
+    paths:
+      - ".conductor/epoch.json"
+      - "**/package.json"
+      - "**/Cargo.toml"
+      - "**/go.mod"
+  schedule:
+    - cron: "0 6 * * *"   # daily drift sentinel
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Pin each toolchain to the version recorded in .conductor/epoch.json.
+      # (Use a step that reads the epoch; hard-coded here for the template.)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # - uses: dtolnay/rust-toolchain@<pinned>
+      # - uses: actions/setup-go@v5
+      #   with: { go-version: "1.22.4" }
+
+      - name: Verify the epoch is well-formed and preconditions hold
+        run: |
+          python3 tools/hermetic/hermetic.py verify . --epoch .conductor/epoch.json
+
+      - name: Probe for resolution drift (re-resolve x2, byte-diff)
+        run: |
+          python3 tools/hermetic/hermetic.py probe . --epoch .conductor/epoch.json --runs 2

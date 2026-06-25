@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Hermetic gate scratch (isolated caches written during resolution)
+.hermetic/
+
+# OS
+.DS_Store
